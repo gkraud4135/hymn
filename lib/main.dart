@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 void main() {
   runApp(DialPadApp());
@@ -724,7 +725,7 @@ class _DialPadScreenState extends State<DialPadScreen> {
           SizedBox(height: 70),
           Text(
             searchNumber.isEmpty ? "" : " $searchNumber",
-            style: TextStyle(fontSize: 75, color: Colors.white),
+            style: TextStyle(fontSize: 40, color: Colors.white),
           ),
           SizedBox(height: 55),
           Container(
@@ -782,8 +783,14 @@ class VideoPlayerScreen extends StatefulWidget {
   _VideoPlayerScreenState createState() => _VideoPlayerScreenState();
 }
 
+int _tapCount = 0; // 클릭 횟수 추적
 class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   late YoutubePlayerController _controller;
+  BannerAd? _bannerAd;
+  bool _isAdLoaded = false;
+  bool _isAdShown = false;
+
+  InterstitialAd? _interstitialAd;
 
   @override
   void initState() {
@@ -791,11 +798,60 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     _controller = YoutubePlayerController(
       initialVideoId: YoutubePlayer.convertUrlToId(widget.videoUrl)!,
       flags: YoutubePlayerFlags(
-        autoPlay: true,  // 비디오 자동 재생
+        autoPlay: true,
         mute: false,
         forceHD: true,
       ),
     );
+    _loadBannerAd();
+    _loadInterstitialAd();
+  }
+
+  // 배너 광고 로드
+  void _loadBannerAd() {
+    _bannerAd = BannerAd(
+      adUnitId: 'ca-app-pub-3940256099942544/6300978111', // 테스트용 광고 ID
+      size: AdSize.banner,
+      request: AdRequest(),
+      listener: BannerAdListener(
+        onAdLoaded: (_) {
+          setState(() {
+            _isAdLoaded = true;
+          });
+        },
+        onAdFailedToLoad: (ad, error) {
+          ad.dispose();
+          print('Failed to load a banner ad: ${error.message}');
+        },
+      ),
+    );
+    _bannerAd!.load();
+  }
+
+  // 전면 광고 로드
+  void _loadInterstitialAd() {
+    InterstitialAd.load(
+      adUnitId: 'ca-app-pub-3940256099942544/1033173712', // 실제 광고 ID로 교체
+      request: AdRequest(),
+      adLoadCallback: InterstitialAdLoadCallback(
+        onAdLoaded: (InterstitialAd ad) {
+          _interstitialAd = ad;
+          print('Interstitial Ad loaded');
+        },
+        onAdFailedToLoad: (LoadAdError error) {
+          print('Failed to load interstitial ad: ${error.message}');
+        },
+      ),
+    );
+  }
+
+  // 전면 광고 표시
+  void _showInterstitialAd() {
+    if (_interstitialAd != null) {
+      _interstitialAd!.show();
+    } else {
+      print('Interstitial Ad is not loaded yet.');
+    }
   }
 
   @override
@@ -816,18 +872,33 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
             height: MediaQuery.of(context).size.height * 0.5,
             child: YoutubePlayer(
               controller: _controller,
-              showVideoProgressIndicator: false,  // 비디오 진행 표시
+              showVideoProgressIndicator: false,
             ),
           ),
+          // 배너 광고
+          if (_isAdLoaded && _bannerAd != null && !_isAdShown)
+            Container(
+              height: _bannerAd!.size.height.toDouble(),
+              width: _bannerAd!.size.width.toDouble(),
+              child: AdWidget(ad: _bannerAd!),
+            ),
           // 뒤로가기 버튼
           Padding(
-            padding: const EdgeInsets.only(top: 70), // 영상과 버튼 사이의 간격 설정
+            padding: const EdgeInsets.only(top: 50),
             child: GestureDetector(
               onTap: () {
-                Navigator.pop(context);  // 뒤로가기 동작
+                _tapCount++;
+                if (_tapCount == 2) {
+                  // 두 번째 클릭 시 전면 광고 표시
+                  _showInterstitialAd();
+                  _tapCount = 0; // 클릭 횟수 초기화
+                } else {
+                  print('First click detected');
+                }
+                Navigator.pop(context);
               },
               child: CircleAvatar(
-                radius: 50,  // 동일한 크기
+                radius: 50,
                 backgroundColor: Colors.grey[900],
                 child: Icon(
                   Icons.arrow_back,
@@ -840,5 +911,13 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         ],
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _bannerAd?.dispose();
+    _interstitialAd?.dispose(); // 전면 광고 객체 해제
+    super.dispose();
   }
 }
