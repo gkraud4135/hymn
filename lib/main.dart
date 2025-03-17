@@ -810,7 +810,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   // 배너 광고 로드
   void _loadBannerAd() {
     _bannerAd = BannerAd(
-      adUnitId: 'ca-app-pub-8718133272643334/4529396238',
+      adUnitId: 'ca-app-pub-8718133272643334/7004994687',
       size: AdSize.banner,
       request: AdRequest(),
       listener: BannerAdListener(
@@ -831,7 +831,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   // 전면 광고 로드
   void _loadInterstitialAd() {
     InterstitialAd.load(
-      adUnitId: 'ca-app-pub-8718133272643334/3168783927',
+      adUnitId: 'ca-app-pub-8718133272643334/3065749676',
       request: AdRequest(),
       adLoadCallback: InterstitialAdLoadCallback(
         onAdLoaded: (InterstitialAd ad) {
